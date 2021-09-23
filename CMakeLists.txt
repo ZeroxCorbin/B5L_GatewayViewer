@@ -52,7 +52,6 @@ add_executable(
 
 target_link_libraries(
      b5l_gateway_viewer
-     pthread
      ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES} ${PCL_LIBRARIES} ${PCL_FILTERS_LIBRARIES}
      )
 

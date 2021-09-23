@@ -6,7 +6,7 @@
  */
 /************TCPSocket.c************************/
 
-#include "clsTCPSocket.h"
+#include "clsTCPSocket.hpp"
 
 bool clsTCPSocket::Configure(){
 
@@ -33,7 +33,7 @@ bool clsTCPSocket::Configure(){
 			IP.sin_addr.s_addr = INADDR_ANY;
 		}
 		
-		#if WIN32
+#if WIN32
 		WSADATA wsaData;
 		if(WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) throw SocketException ("Could not load Winsock", 8001);
 		this->SocketNum = socket(IP.sin_family, SOCK_STREAM, IPPROTO_TCP);
@@ -172,12 +172,17 @@ int clsTCPSocket::Write(const char* sendData, int dataLength)
 }
 
 bool clsTCPSocket::HasData(){
+#if WIN32
+		return true;
 	int count;
+
+#else
 	ioctl(this->SocketNum, FIONREAD, &count);
 	if(count > 0)
 		return true;
 	else
 		return false;
+#endif
 }
 
 long clsTCPSocket::Read(long dataLen){

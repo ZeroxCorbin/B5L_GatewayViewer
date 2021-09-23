@@ -8,9 +8,6 @@
 #ifndef LINCLUDES_CLSTCPSOCKET_H_
 #define LINCLUDES_CLSTCPSOCKET_H_
 
-#include "libConversion.h"
-#include "libException.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -18,22 +15,24 @@
 #include <sstream>
 #include <cstring>
 #include <sys/types.h>
-#include <sys/ioctl.h>
-
-#include <netinet/tcp.h>
+#include <vector>
 
 #if WIN32
-#include <windows.h>
-#include <winsock2.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
 #else
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #endif
 
-#include <vector>
-#include <unistd.h>
+#include "libConversion.h"
+#include "libException.h"
 
 /* BufferLength is 100 bytes */
 #define REC_BUFFER_LENGTH 2500000
@@ -57,7 +56,12 @@ public:
 	struct sockaddr_in IP;
 
 	int Port;
+	#if WIN32
+	SOCKET SocketNum;
+	#else
 	int SocketNum;
+	#endif
+
 	int IsBound;
 	char recBuffer[REC_BUFFER_LENGTH];
 	//char sndBuffer[REC_BUFFER_LENGTH];

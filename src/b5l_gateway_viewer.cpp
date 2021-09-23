@@ -1,22 +1,4 @@
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/bilateral.h>
-
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>
-
-#include "clsTCPSocket.h"
-
-#include <unistd.h>
-#include <iostream>
-#include <ostream>
-#include <chrono>
-#include <thread>
-
-using namespace std::chrono_literals;
+#include "b5l_gateway_viewer.hpp"
 
 const char *FilePath="/home/zeroxcorbin/file_in.pcd";
 
@@ -148,6 +130,7 @@ main()
     std::thread display(DisplayCloud);
 
     display.join();
+    
     client.join();
 
     return 0;

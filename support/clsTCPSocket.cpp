@@ -174,9 +174,10 @@ int clsTCPSocket::Write(const char* sendData, int dataLength)
 bool clsTCPSocket::HasData(){
 #if WIN32
 		return true;
-	int count;
+
 
 #else
+	int count;
 	ioctl(this->SocketNum, FIONREAD, &count);
 	if(count > 0)
 		return true;

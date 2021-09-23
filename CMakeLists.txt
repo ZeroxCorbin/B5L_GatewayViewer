@@ -39,7 +39,14 @@ add_definitions(-DSOURCE_DIR_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}")
 add_definitions(${PCL_DEFINITIONS})
 
 find_package(PCL 1.3 REQUIRED)
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS)
+
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(CMAKE_HAVE_THREADS_LIBRARY 1)
+set(CMAKE_USE_WIN32_THREADS_INIT 0)
+set(CMAKE_USE_PTHREADS_INIT 1)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 link_directories(${PCL_LIBRARY_DIRS})
 
@@ -52,6 +59,7 @@ add_executable(
 
 target_link_libraries(
      b5l_gateway_viewer
+     Threads::Threads
      ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES} ${PCL_LIBRARIES} ${PCL_FILTERS_LIBRARIES}
      )
 

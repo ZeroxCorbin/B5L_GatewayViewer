@@ -8,9 +8,7 @@ using namespace std::chrono_literals;
 
 #if WIN32
 #include <mutex>
-//#pragma comment(lib,"pthreadVC3.lib")
 #else
-#pragma comment(lib,"pthread")
 #include <unistd.h>
 #endif
 

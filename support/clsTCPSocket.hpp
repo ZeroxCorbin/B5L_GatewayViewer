@@ -35,7 +35,7 @@
 #include "libException.h"
 
 /* BufferLength is 100 bytes */
-#define REC_BUFFER_LENGTH 2500000
+#define REC_BUFFER_LENGTH 50000
 //#define SND_BUFFER_LENGTH 500
 /* Default host name of server system. Change it to your default */
 /* server hostname or IP.  If the user do not supply the hostname */

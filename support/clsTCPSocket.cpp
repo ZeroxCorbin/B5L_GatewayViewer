@@ -173,6 +173,22 @@ int clsTCPSocket::Write(const char* sendData, int dataLength)
 
 bool clsTCPSocket::HasData(){
 #if WIN32
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 10;
+
+    fd_set rfd;
+    FD_ZERO(&rfd);
+    FD_SET(this->SocketNum, &rfd);
+int ret = select(this->SocketNum+1, &rfd, NULL, NULL, &timeout);
+    if (ret == -1) {
+return false;
+    }
+
+    if (ret == 0) {
+ return false;
+    }
+
 		return true;
 
 
@@ -196,8 +212,8 @@ long clsTCPSocket::Read(long dataLen){
 		while(true){
 
 			//Peek at the receive buffer
-			//rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,MSG_PEEK);
-			//if(rc > 0) 
+			// rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,MSG_PEEK);
+			// if(rc > 0) 
 				rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,0);
 
 			if(rc < 0){

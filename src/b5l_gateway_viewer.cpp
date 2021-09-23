@@ -1,6 +1,10 @@
 #include "b5l_gateway_viewer.hpp"
 
+#if WIN32
+const char *FilePath="D:\\file_in.pcd";
+#else
 const char *FilePath="/home/zeroxcorbin/file_in.pcd";
+#endif
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_(new pcl::PointCloud<pcl::PointXYZ>);
 std::mutex updateModelMutex_;
@@ -51,7 +55,7 @@ void
 Connect(){
     clsTCPSocket client;
 
-    client.NameIP = "127.0.0.1";
+    client.NameIP = "192.168.0.123";
     client.Port = 8890;
 
 	if(!client.Configure()){
@@ -80,7 +84,7 @@ void DisplayCloud()
 
     viewer.initCameraParameters ();
 
-
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
 
     while (!viewer.wasStopped()){
 
@@ -88,7 +92,7 @@ void DisplayCloud()
         std::unique_lock<std::mutex> updateLock(updateModelMutex_);
         if(update_)
         {
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+            
               // Create the filtering object
             pcl::PassThrough<pcl::PointXYZ> pass;
             pass.setInputCloud (cloud_);

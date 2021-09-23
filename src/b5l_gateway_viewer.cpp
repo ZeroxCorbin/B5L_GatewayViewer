@@ -78,7 +78,7 @@ RecieveData(clsTCPSocket *client){
 
             std::unique_lock<std::mutex> updateLock(updateModelMutex_);
             pcl::io::loadPCDFile<pcl::PointXYZI> (FilePath, *cloud_);
-            update_ = false;
+            update_ = true;
             updateLock.unlock();
         }
 
@@ -106,6 +106,54 @@ Connect(){
   using CloudPtr = typename Cloud::Ptr;
   using CloudConstPtr = typename Cloud::ConstPtr;
 
+void displayCloud()
+{
+     std::cout <<  " waiting for data\n";
+    while(!update_){
+        std::this_thread::sleep_for(10ms);
+    }
+    if (cloud_->size() < 1)
+    {
+        std::cout <<  " display failure. Cloud contains no points\n";
+        return;
+    }
+
+    std::cout <<  " display starting\n";
+    pcl::visualization::PCLVisualizer viewer;
+pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> handler(cloud_,"intensity");
+
+viewer.addPointCloud<pcl::PointXYZI>(cloud_,handler,"id");
+
+    // pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    // pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> point_cloud_color_handler(cloud_, "intensity");
+
+    // viewer->addPointCloud< pcl::PointXYZI >(cloud_, point_cloud_color_handler, "id");
+    viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "id");
+
+    //viewer->registerKeyboardCallback(keyboardEventOccurred, (void*)viewer.get());
+  viewer.initCameraParameters ();
+
+    while (!viewer.wasStopped()){
+
+        // Get lock on the boolean update and check if cloud was updated
+        std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+        if(update_)
+        {
+            // CloudPtr temp_cloud;
+            // temp_cloud.swap (cloud_); //here we set cloud_ to null, so that
+std::cout << "cloud update" << std::endl;
+           viewer.updatePointCloud< pcl::PointXYZI >(cloud_,handler,"id");
+
+            update_ = false;
+        }
+        updateLock.unlock(); 
+        
+        viewer.spinOnce(100);
+    }
+
+    viewer.close();
+}
+
 
 int
 main()
@@ -113,7 +161,7 @@ main()
 
     // pcl::io::loadPCDFile("file.pcd", *cloud);
     // fprintf(stderr, "H:[%d] W:[%d]\n", cloud->height, cloud->width);
- pcl::visualization::CloudViewer viewer_ ("3D Viewer");
+ //pcl::visualization::CloudViewer viewer_ ("3D Viewer");
    
     // //blocks until the cloud is actually rendered
     // viewer.showCloud(cloud);
@@ -128,28 +176,30 @@ main()
     //viewer.runOnVisualizationThread(viewerPsycho);
 
     std::thread client(Connect);
- 
+    std::thread display(displayCloud);
+    display.join();
+ client.join();
     // prepare visualizer named "viewer"
-    while (!viewer_.wasStopped ())
-    {
-        std::this_thread::sleep_for(100ms);
+//     while (!viewer_.wasStopped ())
+//     {
+//         std::this_thread::sleep_for(100ms);
 
-        // Get lock on the boolean update and check if cloud was updated
-        std::unique_lock<std::mutex> updateLock(updateModelMutex_);
-        if(update_)
-        {
-            // CloudPtr temp_cloud;
-            // temp_cloud.swap (cloud_); //here we set cloud_ to null, so that
-std::cout << "cloud update" << std::endl;
-            viewer_.showCloud(cloud_);
+//         // Get lock on the boolean update and check if cloud was updated
+//         std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+//         if(update_)
+//         {
+//             // CloudPtr temp_cloud;
+//             // temp_cloud.swap (cloud_); //here we set cloud_ to null, so that
+// std::cout << "cloud update" << std::endl;
+//             viewer_.showCloud(cloud_);
 
-            update_ = false;
-        }
-        updateLock.unlock();
+//             update_ = false;
+//         }
+//         updateLock.unlock();
 
-    } 
+//     } 
     
-    client.join();
+    
 
     return 0;
 }

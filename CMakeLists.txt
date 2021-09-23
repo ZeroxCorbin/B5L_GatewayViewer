@@ -41,7 +41,8 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(PCL 1.3 REQUIRED)
 find_package(Boost COMPONENTS)
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,stack-size=1000000")
 
 set(CMAKE_THREAD_LIBS_INIT "-lpthread")
 set(CMAKE_HAVE_THREADS_LIBRARY 1)
@@ -63,6 +64,7 @@ target_link_libraries(
      b5l_gateway_viewer
      Threads::Threads
      ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES} ${PCL_LIBRARIES} ${PCL_FILTERS_LIBRARIES}
+     
      )
 
 install(TARGETS

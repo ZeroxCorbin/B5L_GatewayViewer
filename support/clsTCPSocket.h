@@ -18,6 +18,9 @@
 #include <sstream>
 #include <cstring>
 #include <sys/types.h>
+#include <sys/ioctl.h>
+
+#include <netinet/tcp.h>
 
 #if WIN32
 #include <windows.h>
@@ -33,7 +36,7 @@
 #include <unistd.h>
 
 /* BufferLength is 100 bytes */
-#define REC_BUFFER_LENGTH 50000
+#define REC_BUFFER_LENGTH 2500000
 //#define SND_BUFFER_LENGTH 500
 /* Default host name of server system. Change it to your default */
 /* server hostname or IP.  If the user do not supply the hostname */
@@ -56,7 +59,7 @@ public:
 	int Port;
 	int SocketNum;
 	int IsBound;
-	char recBuffer[REC_BUFFER_LENGTH];
+	unsigned char recBuffer[REC_BUFFER_LENGTH];
 	//char sndBuffer[REC_BUFFER_LENGTH];
 
 	int Connect(void);
@@ -65,7 +68,8 @@ public:
 
 	bool Configure(void);
 	bool ConfigureFTP(void);
-	int Write(char*);
+	int Write(const char*);
+	bool HasData();
 	long Read(long = 0);
 };
 

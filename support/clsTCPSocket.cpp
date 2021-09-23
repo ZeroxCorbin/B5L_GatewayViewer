@@ -123,6 +123,9 @@ int clsTCPSocket::Connect()
 #endif
 		if(this->SocketNum <= 0) throw SocketException ("Could not create a socket", 8002);
 
+int flags =1;
+		//setsockopt(this->SocketNum, SOL_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
+
 		uint32_t clilen = sizeof(this->IP);
 		rc = connect(this->SocketNum, (struct sockaddr *)&this->IP, clilen);
 		if(!(rc==0)) throw SocketException ("Could not connect to client", 8005);
@@ -139,7 +142,7 @@ int clsTCPSocket::Connect()
 	}
 }
 
-int clsTCPSocket::Write(char* sendData)
+int clsTCPSocket::Write(const char* sendData)
 {
 	int rc = sizeof(int);
 	try{
@@ -170,6 +173,15 @@ int clsTCPSocket::Write(char* sendData)
 	}
 }
 
+bool clsTCPSocket::HasData(){
+	int count;
+	ioctl(this->SocketNum, FIONREAD, &count);
+	if(count > 0)
+		return true;
+	else
+		return false;
+}
+
 long clsTCPSocket::Read(long dataLen){
 	int  rc, length = sizeof(int);
 
@@ -180,8 +192,9 @@ long clsTCPSocket::Read(long dataLen){
 		while(true){
 
 			//Peek at the receive buffer
-			rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,MSG_PEEK);
-			if(rc > 0) rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,0);
+			//rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,MSG_PEEK);
+			//if(rc > 0) 
+				rc = recv(this->SocketNum, &this->recBuffer[0], dataLen-length,0);
 
 			if(rc < 0){
 				throw SocketException("Data read error", 8010);

@@ -59,7 +59,7 @@ public:
 	int Port;
 	int SocketNum;
 	int IsBound;
-	unsigned char recBuffer[REC_BUFFER_LENGTH];
+	char recBuffer[REC_BUFFER_LENGTH];
 	//char sndBuffer[REC_BUFFER_LENGTH];
 
 	int Connect(void);
@@ -68,7 +68,7 @@ public:
 
 	bool Configure(void);
 	bool ConfigureFTP(void);
-	int Write(const char*);
+	int Write(const char*, int = 0);
 	bool HasData();
 	long Read(long = 0);
 };

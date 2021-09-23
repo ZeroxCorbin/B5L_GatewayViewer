@@ -96,13 +96,11 @@ bool clsTCPSocket::Listen(clsTCPSocket* client){
 
 		return true;
 	}catch(SocketException& ex) {
-		Close();
 		if(client->SocketNum > 0) Close(client->SocketNum);
 		UpdateUser((char*)ex.description().c_str(), ex.code());
 		return false;
 	}
 	catch(...) {
-		Close();
 		if(client->SocketNum > 0) Close(client->SocketNum);
 		UpdateUser((char*)"Unknown Listen() Error", 8021);
 		return false;
@@ -123,7 +121,7 @@ int clsTCPSocket::Connect()
 #endif
 		if(this->SocketNum <= 0) throw SocketException ("Could not create a socket", 8002);
 
-int flags =1;
+		//int flags =1;
 		//setsockopt(this->SocketNum, SOL_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
 
 		uint32_t clilen = sizeof(this->IP);
@@ -132,21 +130,22 @@ int flags =1;
 
 		return true;
 	}catch(SocketException& ex){
-		Close();
 		UpdateUser((char*)ex.description().c_str(), ex.code());
 		return false;
 	}catch(...){
-		Close();
 		UpdateUser((char*)"Unknown Connect() Error", 8020);
 		return false;
 	}
 }
 
-int clsTCPSocket::Write(const char* sendData)
+int clsTCPSocket::Write(const char* sendData, int dataLength)
 {
 	int rc = sizeof(int);
 	try{
-		rc = send(this->SocketNum, sendData, strlen(sendData),0);
+		if(dataLength == 0){
+			dataLength = strlen(sendData);
+		}
+		rc = send(this->SocketNum, sendData, dataLength,0);
 
 		if(rc < 0){
 			int  length = sizeof(int);
@@ -163,11 +162,9 @@ int clsTCPSocket::Write(const char* sendData)
 
 		return rc;
 	}catch(SocketException& ex){
-		Close();
 		UpdateUser((char*)ex.description().c_str(), ex.code());
 		return false;
 	}catch(...){
-		Close();
 		UpdateUser((char*)"Unknown Write() Error", 8022);
 		return false;
 	}
@@ -214,11 +211,9 @@ long clsTCPSocket::Read(long dataLen){
 		this->recBuffer[length] = 0;
 		return length;
 	}catch(SocketException& ex){
-		Close();
 		UpdateUser((char*)ex.description().c_str(), ex.code());
 		return -1;
 	}catch(...){
-		Close();
 		UpdateUser((char*)"Unknown Read() Error", 8023);
 		return -1;
 	}

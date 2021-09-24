@@ -30,9 +30,17 @@ endif()
 #      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../../build/${PROJECT_NAME}/b5l_gateway_viewer )
 # endif()
 
+# Set the path to the support repo: https://github.com/ZeroxCorbin/CSupportLibrary
+if(WIN32)
+     set(SUPPORT_LIB ../../Cpp/CSupportLibrary/)
+else()
+     set(SUPPORT_LIB ../CSupportLibrary/)
+endif()
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/support/)
 include_directories(${PCL_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
+include_directories(${SUPPORT_LIB}/include/)
 
 add_definitions(-DPI) #This is a Raspberry PI
 add_definitions(-DSOURCE_DIR_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -56,9 +64,9 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_executable(
      b5l_gateway_viewer
      src/b5l_gateway_viewer.cpp
-     support/clsTCPSocket.cpp
-     support/libException.cpp
-     support/clsTimer.cpp
+     ${SUPPORT_LIB}/src/clsTCPSocket.cpp
+     ${SUPPORT_LIB}/src/libException.cpp
+     ${SUPPORT_LIB}/src/clsTimer.cpp
      )
 
 target_link_libraries(

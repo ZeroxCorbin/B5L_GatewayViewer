@@ -1,5 +1,8 @@
 # B5L_GatewayViewer
 
+Requires Repo: https://github.com/ZeroxCorbin/CSupportLibrary
+Linked to in CMake
+
 Windows prep.
 
 Install PCL

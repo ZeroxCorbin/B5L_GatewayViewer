@@ -116,7 +116,7 @@ void PassThroughFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointC
     std::cout <<  "pass: " << t.elapsedMilliseconds() << std::endl;
 }
 
-void FindPlanes(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients, pcl::PointIndices::Ptr inliers){
+void SACSegmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients, pcl::PointIndices::Ptr inliers){
     Timer t;
     t.start();
         pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -125,12 +125,27 @@ void FindPlanes(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoeffici
         // Mandatory
         seg.setModelType (pcl::SACMODEL_PLANE);
         seg.setMethodType (pcl::SAC_RANSAC);
-        seg.setDistanceThreshold (0.1);
+        seg.setDistanceThreshold (2.0);
 
         seg.setInputCloud (cloud_in);
         seg.segment (*inliers, *coefficients);
     std::cout <<  "plan: " << t.elapsedMilliseconds() << std::endl;
 }
+
+void RandomSampleConsensus(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud){
+    Timer t;
+    t.start();    
+        std::vector<int> inliers;
+        pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr model_p (new pcl::SampleConsensusModelPlane<pcl::PointXYZ> (cloud_in));
+        pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_p);
+        
+        ransac.setDistanceThreshold (.1);
+        ransac.computeModel();
+        ransac.getInliers(inliers);
+        pcl::copyPointCloud<pcl::PointXYZ>(*cloud_in, inliers, *filtered_cloud);
+    std::cout <<  "rans: " << t.elapsedMilliseconds() << std::endl;
+}
+
 void DisplayCloud()
 {
     std::cout <<  "Waiting for initial data.\n";
@@ -147,14 +162,20 @@ void DisplayCloud()
 
     viewer.initCameraParameters ();
 
-    //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (new pcl::PointCloud<pcl::PointXYZ>());
+
     pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new pcl::PointCloud<pcl::PointXYZ>());;
 
     pcl::PointCloud<pcl::Normal>::Ptr normalsCloud (new pcl::PointCloud<pcl::Normal>);
 
     pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+
     pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr inliersCloud (new pcl::PointCloud<pcl::PointXYZ>());
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new pcl::PointCloud<pcl::PointXYZ>());;
+
 
     while (!viewer.wasStopped()){
 
@@ -165,19 +186,22 @@ void DisplayCloud()
 
             PassThroughFilter(cloud_, passThroughCloud);
             //VoxelGrid(passThroughCloud, voxelCloud);
-            
-
-            viewer.updatePointCloud< pcl::PointXYZ >(passThroughCloud,"id");
-
+ 
             // NormalEstimationOMP(voxelCloud, normalsCloud);
             // viewer.removePointCloud("normals");
             // viewer.addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
 
-            FindPlanes(passThroughCloud, coefficients, inliers);
-            viewer.removeShape("plane1");
-            viewer.addPlane(*coefficients, "plane1");
+            // SACSegmentation(passThroughCloud, coefficients, inliers);
+            // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers, *inliersCloud);
+            // viewer.removeShape("plane1");
+            // viewer.addPlane(*coefficients, "plane1");
+
+            //RandomSampleConsensus(passThroughCloud, ransacCloud);
+
+            viewer.updatePointCloud< pcl::PointXYZ >(voxelCloud, "id");
 
             update_ = false;
+
         }
         updateLock.unlock(); 
         

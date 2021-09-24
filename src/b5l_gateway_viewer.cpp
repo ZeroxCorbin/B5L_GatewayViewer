@@ -68,6 +68,69 @@ Connect(){
     }
 }
 
+void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::Normal>::Ptr normals_cloud){
+    Timer t;
+    t.start();
+        pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
+        ne.setInputCloud (cloud_in);
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
+        ne.setSearchMethod (tree);
+        ne.setRadiusSearch (0.05);
+        ne.compute (*normals_cloud);
+    std::cout <<  "norm: " << t.elapsedMilliseconds() << std::endl;
+}
+
+void BilateralFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr bilateral_cloud){
+    Timer t;
+    t.start();
+        // pcl::BilateralFilter<pcl::PointXYZ> bf;
+        // bf.setInputCloud(cloud_in);
+        // bf.setHalfSize(2.0);
+        // pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
+        // bf.setSearchMethod (tree);
+        // bf.setStdDev(0.2);
+        // bf.filter(*bilateral_cloud);
+    std::cout <<  "bilt: " << t.elapsedMilliseconds() << std::endl;
+}
+
+void VoxelGrid(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud){
+    Timer t;
+    t.start();
+        pcl::VoxelGrid<pcl::PointXYZ> sor;
+        sor.setInputCloud(cloud_in);//Set the point cloud to be filtered for the filtering object
+        sor.setLeafSize(0.05f, 0.05f, 0.05f);//Set the voxel size created when filtering is a 1cm cube
+        //sor.setLeafSize(0.05f, 0.05f, 0.05f);
+        sor.filter(*filtered_cloud);//Perform filtering processing and store the output cloud_filtered
+    std::cout <<  "voxl: " << t.elapsedMilliseconds() << std::endl;
+}
+
+void PassThroughFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud){
+    Timer t;
+    t.start();
+        pcl::PassThrough<pcl::PointXYZ> pass;
+        pass.setInputCloud (cloud_in);
+        pass.setFilterFieldName ("z");
+        pass.setFilterLimits (1.0, 6.0);
+        //pass.setFilterLimitsNegative (true);
+        pass.filter (*filtered_cloud);
+    std::cout <<  "pass: " << t.elapsedMilliseconds() << std::endl;
+}
+
+void FindPlanes(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients, pcl::PointIndices::Ptr inliers){
+    Timer t;
+    t.start();
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+
+        seg.setOptimizeCoefficients (true);
+        // Mandatory
+        seg.setModelType (pcl::SACMODEL_PLANE);
+        seg.setMethodType (pcl::SAC_RANSAC);
+        seg.setDistanceThreshold (0.1);
+
+        seg.setInputCloud (cloud_in);
+        seg.segment (*inliers, *coefficients);
+    std::cout <<  "plan: " << t.elapsedMilliseconds() << std::endl;
+}
 void DisplayCloud()
 {
     std::cout <<  "Waiting for initial data.\n";
@@ -80,11 +143,18 @@ void DisplayCloud()
     //pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler(cloud_,"intensity");
 
     viewer.addPointCloud<pcl::PointXYZ>(cloud_,"id");
-    viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "id");
+    viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
 
     viewer.initCameraParameters ();
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new pcl::PointCloud<pcl::PointXYZ>());;
+
+    pcl::PointCloud<pcl::Normal>::Ptr normalsCloud (new pcl::PointCloud<pcl::Normal>);
+
+    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
 
     while (!viewer.wasStopped()){
 
@@ -92,36 +162,26 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::Poi
         std::unique_lock<std::mutex> updateLock(updateModelMutex_);
         if(update_)
         {
+
+            PassThroughFilter(cloud_, passThroughCloud);
+            //VoxelGrid(passThroughCloud, voxelCloud);
             
-              // Create the filtering object
-            pcl::PassThrough<pcl::PointXYZ> pass;
-            pass.setInputCloud (cloud_);
-            pass.setFilterFieldName ("z");
-            pass.setFilterLimits (1.0, 6.0);
-            //pass.setFilterLimitsNegative (true);
-            pass.filter (*cloud_filtered);
 
-            // pcl::VoxelGrid<pcl::PointXYZ> sor;
-            // sor.setInputCloud(cloud_);//Set the point cloud to be filtered for the filtering object
-            // sor.setLeafSize(0.01f, 0.01f, 0.01f);//Set the voxel size created when filtering is a 1cm cube
-            // //sor.setLeafSize(0.05f, 0.05f, 0.05f);
-            // sor.filter(*cloud_filtered);//Perform filtering processing and store the output cloud_filtered
+            viewer.updatePointCloud< pcl::PointXYZ >(passThroughCloud,"id");
 
-            // pcl::BilateralFilter<pcl::PointXYZ> bf;
-            // pcl::PointCloud<pcl::PointXYZ> cloud_bilateral;
+            // NormalEstimationOMP(voxelCloud, normalsCloud);
+            // viewer.removePointCloud("normals");
+            // viewer.addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
 
-            // bf.setInputCloud(cloud_);
-            // bf.setHalfSize(2.0);
-            // //bf.setSearchMethod (tree);
-            // bf.setStdDev(0.2);
-            // bf.filter(cloud_bilateral);
+            FindPlanes(passThroughCloud, coefficients, inliers);
+            viewer.removeShape("plane1");
+            viewer.addPlane(*coefficients, "plane1");
 
-            viewer.updatePointCloud< pcl::PointXYZ >(cloud_filtered,"id");
             update_ = false;
         }
         updateLock.unlock(); 
         
-        viewer.spinOnce(10);
+        viewer.spinOnce(100);
     }
 
     viewer.close();

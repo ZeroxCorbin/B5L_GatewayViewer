@@ -58,6 +58,7 @@ add_executable(
      src/b5l_gateway_viewer.cpp
      support/clsTCPSocket.cpp
      support/libException.cpp
+     support/clsTimer.cpp
      )
 
 target_link_libraries(

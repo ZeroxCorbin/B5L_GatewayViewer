@@ -1,7 +1,7 @@
 #include "b5l_gateway_viewer.hpp"
 
 #if WIN32
-const char *FilePath="D:\\file_in.pcd";
+const char *FilePath="C:\\Users\\jack\\Dropbox\\Projects\\Cpp\\B5L_GatewayViewer\\build\\Debug\\file_in.pcd";
 #else
 const char *FilePath="/home/zeroxcorbin/file_in.pcd";
 #endif
@@ -13,14 +13,17 @@ bool exit_app_;
 
 bool SaveImageFile(std::vector<unsigned char> fileBytes){
 
-    std::cout << "Writing file bytes: " << fileBytes.size() << std::endl;
-
     std::ofstream file(FilePath, std::ios::out|std::ios::binary);
-    std::copy(fileBytes.cbegin(), fileBytes.cend(),
-        std::ostream_iterator<unsigned char>(file));
-    file.close();
+    if(!file.fail()){
+        std::copy(fileBytes.cbegin(), fileBytes.cend(), std::ostream_iterator<unsigned char>(file));
+        file.close();
 
-	return true;
+        return true;
+    }else{
+        std::cout << "Writing file failed!" << std::endl; 
+
+        return false;
+    }	
 }
 
 void
@@ -40,12 +43,16 @@ RecieveData(clsTCPSocket *client){
         }
 
         if(vect.size() > 0){
-            SaveImageFile(vect);
+            std::cout << "Bytes Recieved: " << vect.size() << std::endl; 
 
-            std::unique_lock<std::mutex> updateLock(updateModelMutex_);
-            pcl::io::loadPCDFile<pcl::PointXYZ> (FilePath, *cloud_);
-            update_ = true;
-            updateLock.unlock();
+            if(SaveImageFile(vect)){
+                std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+                int res = pcl::io::loadPCDFile<pcl::PointXYZ> (FilePath, *cloud_);
+                if(res == 0){
+                    update_ = true;
+                }
+                updateLock.unlock();                 
+            }
         }
 
         if(exit_app_)

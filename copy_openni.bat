@@ -1,0 +1,1 @@
+xcopy "C:\Program Files\OpenNI2\Tools\OpenNI2.dll" ".\build\Debug\*"

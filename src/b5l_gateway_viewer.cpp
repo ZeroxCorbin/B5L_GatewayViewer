@@ -7,9 +7,43 @@ const char *FilePath="/home/zeroxcorbin/file_in.pcd";
 #endif
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_(new pcl::PointCloud<pcl::PointXYZ>);
+std::vector<char> cloud_buffers;// (new std::vector<char>);
+
 std::mutex updateModelMutex_;
 bool update_;
 bool exit_app_;
+
+void
+CopyBuffersToPointCloud()
+{
+	/* The result format should be 0x001 or 0x002 (PCD) */
+
+	pcl::PointXYZ currPoint;
+
+    cloud_->points.clear();
+
+	short *pXYZ;//,*pAmplitude;
+	int i;
+
+	pXYZ = (short *)(&cloud_buffers[0]);
+    //pAmplitude = (short *)(&cloud_buffers[0] + (6 * 76800));
+
+	/* QVGA Loop */
+	for (i = 0; i < 76800; i++)
+	{
+
+		//m = 0.0;
+
+		currPoint.x = (float)*pXYZ++ / 1000;
+		currPoint.y = (float)*pXYZ++ / 1000;
+		currPoint.z = (float)*pXYZ++ / 1000;
+		//currPoint.intensity = *pAmplitude++;
+
+		cloud_->points.push_back(currPoint);
+	}
+    cloud_->width = 320;
+    cloud_->height = 240;
+}
 
 bool SaveImageFile(std::vector<unsigned char> fileBytes){
 
@@ -31,28 +65,29 @@ RecieveData(clsTCPSocket *client){
     while(true){
         client->Write("send\r\n");
 
-        std::vector<unsigned char> vect;
+        cloud_buffers.clear();
         while(client->HasData()){
             int len = client->Read();
             if(len > 0){
-                vect.insert(vect.end(), client->recBuffer, client->recBuffer+len);
+                cloud_buffers.insert(cloud_buffers.end(), client->recBuffer, client->recBuffer+len);
             }else{
                 break;
             }
-            std::this_thread::sleep_for(1ms);
+            std::this_thread::sleep_for(10ms);
         }
 
-        if(vect.size() > 0){
-            std::cout << "Bytes Recieved: " << vect.size() << std::endl; 
+        if(cloud_buffers.size() > 0){
+            std::cout << "Bytes Recieved: " << cloud_buffers.size() << std::endl;
 
-            if(SaveImageFile(vect)){
+            //if(SaveImageFile(vect)){
                 std::unique_lock<std::mutex> updateLock(updateModelMutex_);
-                int res = pcl::io::loadPCDFile<pcl::PointXYZ> (FilePath, *cloud_);
-                if(res == 0){
+                CopyBuffersToPointCloud();
+                //int res = pcl::io::loadPCDFile<pcl::PointXYZ> (FilePath, *cloud_);
+                //if(res == 0){
                     update_ = true;
-                }
+                //}
                 updateLock.unlock();                 
-            }
+            //}
         }
 
         if(exit_app_)
@@ -186,6 +221,8 @@ void DisplayCloud()
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new pcl::PointCloud<pcl::PointXYZ>());;
 
+Timer total;
+total.start();
 
     while (!viewer->wasStopped()){
 
@@ -195,9 +232,12 @@ void DisplayCloud()
         {
 
             PassThroughFilter(cloud_, passThroughCloud);
+            NormalEstimationOMP(passThroughCloud, normalsCloud);
             //VoxelGrid(passThroughCloud, voxelCloud);
-             viewer->updatePointCloud< pcl::PointXYZ >(passThroughCloud, "id");
-             NormalEstimationOMP(passThroughCloud, normalsCloud);
+            updateLock.unlock();
+
+            viewer->updatePointCloud< pcl::PointXYZ >(passThroughCloud, "id");
+
             viewer->removePointCloud("normals");
             viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
 
@@ -211,10 +251,12 @@ void DisplayCloud()
 
 
             update_ = false;
-
+            std::cout <<  "total: " << total.elapsedMilliseconds() << std::endl;
+            total.start();
+        }else{
+            updateLock.unlock(); 
         }
-        updateLock.unlock(); 
-        
+
         viewer->spinOnce(100);
 
         if(exit_app_)

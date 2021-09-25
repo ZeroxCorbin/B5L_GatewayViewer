@@ -49,9 +49,9 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(PCL 1.3 REQUIRED)
 find_package(Boost COMPONENTS)
 
-if(WIN32)
-     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
-endif()
+# if(WIN32)
+#      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
+# endif()
 
 set(CMAKE_THREAD_LIBS_INIT "-lpthread")
 set(CMAKE_HAVE_THREADS_LIBRARY 1)

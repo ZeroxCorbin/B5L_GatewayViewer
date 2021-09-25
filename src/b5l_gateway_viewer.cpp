@@ -9,6 +9,7 @@ const char *FilePath="/home/zeroxcorbin/file_in.pcd";
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_(new pcl::PointCloud<pcl::PointXYZ>);
 std::mutex updateModelMutex_;
 bool update_;
+bool exit_app_;
 
 bool SaveImageFile(std::vector<unsigned char> fileBytes){
 
@@ -47,6 +48,8 @@ RecieveData(clsTCPSocket *client){
             updateLock.unlock();
         }
 
+        if(exit_app_)
+            break;
         //std::this_thread::sleep_for(1000ms);
     }
 }
@@ -135,14 +138,14 @@ void SACSegmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoe
 void RandomSampleConsensus(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud){
     Timer t;
     t.start();    
-        std::vector<int> inliers;
+        std::vector<int> *inliers (new std::vector<int>);
         pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr model_p (new pcl::SampleConsensusModelPlane<pcl::PointXYZ> (cloud_in));
         pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_p);
         
         ransac.setDistanceThreshold (.1);
         ransac.computeModel();
-        ransac.getInliers(inliers);
-        pcl::copyPointCloud<pcl::PointXYZ>(*cloud_in, inliers, *filtered_cloud);
+        ransac.getInliers(*inliers);
+        pcl::copyPointCloud<pcl::PointXYZ>(*cloud_in, *inliers, *filtered_cloud);
     std::cout <<  "rans: " << t.elapsedMilliseconds() << std::endl;
 }
 
@@ -154,13 +157,13 @@ void DisplayCloud()
     }
 
     std::cout <<  "Visualizer starting...." << std::endl;
-    pcl::visualization::PCLVisualizer viewer;
+    pcl::visualization::PCLVisualizer *viewer (new pcl::visualization::PCLVisualizer());
     //pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler(cloud_,"intensity");
 
-    viewer.addPointCloud<pcl::PointXYZ>(cloud_,"id");
-    viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
+    viewer->addPointCloud<pcl::PointXYZ>(cloud_,"id");
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
 
-    viewer.initCameraParameters ();
+    viewer->initCameraParameters ();
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (new pcl::PointCloud<pcl::PointXYZ>());
 
@@ -177,7 +180,7 @@ void DisplayCloud()
     pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new pcl::PointCloud<pcl::PointXYZ>());;
 
 
-    while (!viewer.wasStopped()){
+    while (!viewer->wasStopped()){
 
         // Get lock on the boolean update and check if cloud was updated
         std::unique_lock<std::mutex> updateLock(updateModelMutex_);
@@ -186,39 +189,45 @@ void DisplayCloud()
 
             PassThroughFilter(cloud_, passThroughCloud);
             //VoxelGrid(passThroughCloud, voxelCloud);
- 
-            // NormalEstimationOMP(voxelCloud, normalsCloud);
-            // viewer.removePointCloud("normals");
-            // viewer.addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
+             viewer->updatePointCloud< pcl::PointXYZ >(passThroughCloud, "id");
+             NormalEstimationOMP(passThroughCloud, normalsCloud);
+            viewer->removePointCloud("normals");
+            viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
 
             // SACSegmentation(passThroughCloud, coefficients, inliers);
             // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers, *inliersCloud);
-            // viewer.removeShape("plane1");
-            // viewer.addPlane(*coefficients, "plane1");
+            // viewer->removeShape("plane1");
+            // viewer->addPlane(*coefficients, "plane1");
 
             //RandomSampleConsensus(passThroughCloud, ransacCloud);
 
-            viewer.updatePointCloud< pcl::PointXYZ >(voxelCloud, "id");
+
 
             update_ = false;
 
         }
         updateLock.unlock(); 
         
-        viewer.spinOnce(100);
+        viewer->spinOnce(100);
+
+        if(exit_app_)
+            break;
     }
 
-    viewer.close();
+    exit_app_ = true;
+    viewer->close();
 }
 
 int
 main()
 {
+    exit_app_ = false;
+    update_ = false;
+
     std::thread client(Connect);
     std::thread display(DisplayCloud);
 
     display.join();
-    
     client.join();
 
     return 0;

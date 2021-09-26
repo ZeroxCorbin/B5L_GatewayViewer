@@ -31,9 +31,6 @@ CopyBuffersToPointCloud()
 	/* QVGA Loop */
 	for (i = 0; i < 76800; i++)
 	{
-
-		//m = 0.0;
-
 		currPoint.x = (float)*pXYZ++ / 1000;
 		currPoint.y = (float)*pXYZ++ / 1000;
 		currPoint.z = (float)*pXYZ++ / 1000;
@@ -79,20 +76,17 @@ RecieveData(clsTCPSocket *client){
         if(cloud_buffers.size() > 0){
             std::cout << "Bytes Recieved: " << cloud_buffers.size() << std::endl;
 
-            //if(SaveImageFile(vect)){
-                std::unique_lock<std::mutex> updateLock(updateModelMutex_);
-                CopyBuffersToPointCloud();
-                //int res = pcl::io::loadPCDFile<pcl::PointXYZ> (FilePath, *cloud_);
-                //if(res == 0){
-                    update_ = true;
-                //}
-                updateLock.unlock();                 
-            //}
+            std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+            CopyBuffersToPointCloud();
+
+            update_ = true;
+
+            updateLock.unlock();                 
         }
 
         if(exit_app_)
             break;
-        //std::this_thread::sleep_for(1000ms);
+        
     }
 }
 
@@ -232,14 +226,14 @@ total.start();
         {
 
             PassThroughFilter(cloud_, passThroughCloud);
-            NormalEstimationOMP(passThroughCloud, normalsCloud);
+            //NormalEstimationOMP(passThroughCloud, normalsCloud);
             //VoxelGrid(passThroughCloud, voxelCloud);
             updateLock.unlock();
 
-            viewer->updatePointCloud< pcl::PointXYZ >(passThroughCloud, "id");
+            viewer->updatePointCloud<pcl::PointXYZ>(cloud_, "id");
 
-            viewer->removePointCloud("normals");
-            viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
+            //viewer->removePointCloud("normals");
+            //viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
 
             // SACSegmentation(passThroughCloud, coefficients, inliers);
             // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers, *inliersCloud);

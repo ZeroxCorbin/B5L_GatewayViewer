@@ -136,7 +136,7 @@ void RandomSampleConsensus(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::Po
     std::cout <<  "rans: " << t.elapsedMilliseconds() << std::endl;
 }
 
-bool ProcessNormals_ = false;
+bool ProcessNormals_ = true;
 
 void ProcessPointCloud(){
 
@@ -212,12 +212,8 @@ RecieveData(clsTCPSocket *client){
 
             std::cout <<  "cloud proc: " << t.elapsedMilliseconds() << std::endl;
 
-            updateLock.unlock();
-
-            if(exit_app_)
-                break;
-
             update_ = true;
+            updateLock.unlock();
             
         }
 
@@ -283,7 +279,7 @@ viewer->spinOnce(100);
             updateLock.unlock();
         }
 
-        viewer->spinOnce(1);
+        viewer->spinOnce(100);
 
         if(exit_app_)
             viewer->close();

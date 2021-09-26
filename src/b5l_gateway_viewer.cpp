@@ -243,23 +243,15 @@ Connect(){
 
 void DisplayCloud()
 {
-    std::cout <<  "Waiting for initial data.\n";
-    while(!update_){
-        std::this_thread::sleep_for(10ms);
-    }
-
     std::cout <<  "Visualizer starting...." << std::endl;
     pcl::visualization::PCLVisualizer *viewer (new pcl::visualization::PCLVisualizer());
     //pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler(cloud_,"intensity");
 
-    viewer->addPointCloud<pcl::PointXYZ>(cloudOut_,"id");
-    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
-
     viewer->initCameraParameters ();
+    viewer->setShowFPS(false);
 
-
-
-viewer->spinOnce(100);
+    Timer t;
+    t.start();
 
     while (!viewer->wasStopped()){
 
@@ -267,24 +259,32 @@ viewer->spinOnce(100);
         {
             std::unique_lock<std::mutex> updateLock(updateModelMutex_);
   
-            viewer->updatePointCloud<pcl::PointXYZ>(cloudOut_, "id");
+            if(!viewer->updatePointCloud<pcl::PointXYZ>(cloudOut_, "id")){
+                viewer->addPointCloud<pcl::PointXYZ>(cloudOut_,"id");
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
+            }
 
             if(cloudNormals_->points.size() > 0){
                 viewer->removePointCloud("normals");
                 viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(cloudOut_, cloudNormals_, 100, (0.1F), "normals");    
             }
 
-            update_ = false;
+            std::string s = std::to_string(t.elapsedMilliseconds());
+            viewer->removeShape("time");
+            viewer->addText(s, 1,1,"time");
+            t.start();
 
+            update_ = false;
             updateLock.unlock();
         }
 
-        viewer->spinOnce(100);
+        viewer->spinOnce(50);
 
         if(exit_app_)
             viewer->close();
     }
 
+    delete viewer;
     exit_app_ = true;    
 }
 

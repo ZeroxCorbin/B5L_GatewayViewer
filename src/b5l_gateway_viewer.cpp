@@ -6,7 +6,9 @@ const char *FilePath="C:\\Users\\jack\\Dropbox\\Projects\\Cpp\\B5L_GatewayViewer
 const char *FilePath="/home/zeroxcorbin/file_in.pcd";
 #endif
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_(new pcl::PointCloud<pcl::PointXYZ>);
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudIn_(new pcl::PointCloud<pcl::PointXYZ>);
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOut_(new pcl::PointCloud<pcl::PointXYZ>);
+pcl::PointCloud<pcl::Normal>::Ptr cloudNormals_(new pcl::PointCloud<pcl::Normal>);
 std::vector<char> cloud_buffers;// (new std::vector<char>);
 
 std::mutex updateModelMutex_;
@@ -20,7 +22,7 @@ CopyBuffersToPointCloud()
 
 	pcl::PointXYZ currPoint;
 
-    cloud_->points.clear();
+    cloudIn_->points.clear();
 
 	short *pXYZ;//,*pAmplitude;
 	int i;
@@ -36,10 +38,9 @@ CopyBuffersToPointCloud()
 		currPoint.z = (float)*pXYZ++ / 1000;
 		//currPoint.intensity = *pAmplitude++;
 
-		cloud_->points.push_back(currPoint);
+		cloudIn_->points.push_back(currPoint);
 	}
-    cloud_->width = 320;
-    cloud_->height = 240;
+
 }
 
 bool SaveImageFile(std::vector<unsigned char> fileBytes){
@@ -55,56 +56,6 @@ bool SaveImageFile(std::vector<unsigned char> fileBytes){
 
         return false;
     }	
-}
-
-void
-RecieveData(clsTCPSocket *client){
-    while(true){
-        client->Write("send\r\n");
-
-        cloud_buffers.clear();
-        while(client->HasData()){
-            int len = client->Read();
-            if(len > 0){
-                cloud_buffers.insert(cloud_buffers.end(), client->recBuffer, client->recBuffer+len);
-            }else{
-                break;
-            }
-            std::this_thread::sleep_for(10ms);
-        }
-
-        if(cloud_buffers.size() > 0){
-            std::cout << "Bytes Recieved: " << cloud_buffers.size() << std::endl;
-
-            std::unique_lock<std::mutex> updateLock(updateModelMutex_);
-            CopyBuffersToPointCloud();
-
-            update_ = true;
-
-            updateLock.unlock();                 
-        }
-
-        if(exit_app_)
-            break;
-        
-    }
-}
-
-void
-Connect(){
-    clsTCPSocket client;
-
-    client.NameIP = "192.168.0.123";
-    client.Port = 8890;
-
-	if(!client.Configure()){
-		return;
-	}
-
-    if(client.Connect()){
-        std::thread client1(RecieveData, &client);
-        client1.join();
-    }
 }
 
 void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::Normal>::Ptr normals_cloud){
@@ -185,6 +136,115 @@ void RandomSampleConsensus(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::Po
     std::cout <<  "rans: " << t.elapsedMilliseconds() << std::endl;
 }
 
+bool ProcessNormals_ = false;
+
+void ProcessPointCloud(){
+
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (new pcl::PointCloud<pcl::PointXYZ>());
+
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new pcl::PointCloud<pcl::PointXYZ>());;
+
+    // pcl::PointCloud<pcl::Normal>::Ptr normalsCloud (new pcl::PointCloud<pcl::Normal>);
+
+    // pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+
+    // pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr inliersCloud (new pcl::PointCloud<pcl::PointXYZ>());
+
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new pcl::PointCloud<pcl::PointXYZ>());;
+
+    PassThroughFilter(cloudIn_, cloudOut_);
+    if(ProcessNormals_){
+         NormalEstimationOMP(cloudOut_, cloudNormals_);   
+    }else{
+        cloudNormals_->points.clear();
+    }
+
+
+          //VoxelGrid(passThroughCloud, voxelCloud);
+            
+
+            // SACSegmentation(passThroughCloud, coefficients, inliers);
+            // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers, *inliersCloud);
+            // viewer->removeShape("plane1");
+            // viewer->addPlane(*coefficients, "plane1");
+
+            //RandomSampleConsensus(passThroughCloud, ransacCloud);
+
+}
+
+void
+RecieveData(clsTCPSocket *client){
+    Timer t;
+    bool sent = false;
+
+    while(true){
+        if(!sent){
+            t.start();
+            client->Write("send\r\n");
+            cloud_buffers.clear();
+            sent = true;
+        }
+
+        while(cloud_buffers.size() < 614400){
+            int len = client->Read();
+            if(len <= 0){
+                exit_app_ = true;
+                break;
+            }
+            cloud_buffers.insert(cloud_buffers.end(), client->recBuffer, client->recBuffer+len);
+            sent = false;
+        }
+        if(exit_app_)
+            break;
+
+        if(cloud_buffers.size() > 0){
+            
+            std::cout <<  "sensor: " << t.elapsedMilliseconds() << std::endl;
+            t.start();
+
+            std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+
+            CopyBuffersToPointCloud();
+
+            ProcessPointCloud();
+
+            std::cout <<  "cloud proc: " << t.elapsedMilliseconds() << std::endl;
+
+            updateLock.unlock();
+
+            if(exit_app_)
+                break;
+
+            update_ = true;
+            
+        }
+
+        if(exit_app_)
+            break;
+    }
+}
+
+void
+Connect(){
+    clsTCPSocket client;
+
+    client.NameIP = "192.168.0.123";
+    client.Port = 8890;
+
+	if(!client.Configure()){
+		return;
+	}
+
+    if(client.Connect()){
+        std::thread client1(RecieveData, &client);
+        client1.join();
+    }
+}
+
+
+
 void DisplayCloud()
 {
     std::cout <<  "Waiting for initial data.\n";
@@ -196,69 +256,40 @@ void DisplayCloud()
     pcl::visualization::PCLVisualizer *viewer (new pcl::visualization::PCLVisualizer());
     //pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZ> handler(cloud_,"intensity");
 
-    viewer->addPointCloud<pcl::PointXYZ>(cloud_,"id");
+    viewer->addPointCloud<pcl::PointXYZ>(cloudOut_,"id");
     viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "id");
 
     viewer->initCameraParameters ();
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (new pcl::PointCloud<pcl::PointXYZ>());
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new pcl::PointCloud<pcl::PointXYZ>());;
 
-    pcl::PointCloud<pcl::Normal>::Ptr normalsCloud (new pcl::PointCloud<pcl::Normal>);
-
-    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-
-    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr inliersCloud (new pcl::PointCloud<pcl::PointXYZ>());
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new pcl::PointCloud<pcl::PointXYZ>());;
-
-Timer total;
-total.start();
+viewer->spinOnce(100);
 
     while (!viewer->wasStopped()){
 
-        // Get lock on the boolean update and check if cloud was updated
-        std::unique_lock<std::mutex> updateLock(updateModelMutex_);
         if(update_)
         {
+            std::unique_lock<std::mutex> updateLock(updateModelMutex_);
+  
+            viewer->updatePointCloud<pcl::PointXYZ>(cloudOut_, "id");
 
-            PassThroughFilter(cloud_, passThroughCloud);
-            //NormalEstimationOMP(passThroughCloud, normalsCloud);
-            //VoxelGrid(passThroughCloud, voxelCloud);
-            updateLock.unlock();
-
-            viewer->updatePointCloud<pcl::PointXYZ>(cloud_, "id");
-
-            //viewer->removePointCloud("normals");
-            //viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(passThroughCloud, normalsCloud, 100, (0.1F), "normals");
-
-            // SACSegmentation(passThroughCloud, coefficients, inliers);
-            // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers, *inliersCloud);
-            // viewer->removeShape("plane1");
-            // viewer->addPlane(*coefficients, "plane1");
-
-            //RandomSampleConsensus(passThroughCloud, ransacCloud);
-
-
+            if(cloudNormals_->points.size() > 0){
+                viewer->removePointCloud("normals");
+                viewer->addPointCloudNormals<pcl::PointXYZ,pcl::Normal>(cloudOut_, cloudNormals_, 100, (0.1F), "normals");    
+            }
 
             update_ = false;
-            std::cout <<  "total: " << total.elapsedMilliseconds() << std::endl;
-            total.start();
-        }else{
-            updateLock.unlock(); 
+
+            updateLock.unlock();
         }
 
-        viewer->spinOnce(100);
+        viewer->spinOnce(1);
 
         if(exit_app_)
-            break;
+            viewer->close();
     }
 
-    exit_app_ = true;
-    viewer->close();
+    exit_app_ = true;    
 }
 
 int

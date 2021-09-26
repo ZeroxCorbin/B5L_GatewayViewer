@@ -65,6 +65,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_executable(
      b5l_gateway_viewer
      src/b5l_gateway_viewer.cpp
+     src/CloudProcessing.cpp
      ${SUPPORT_LIB}/src/clsTCPSocket.cpp
      ${SUPPORT_LIB}/src/libException.cpp
      ${SUPPORT_LIB}/src/clsTimer.cpp

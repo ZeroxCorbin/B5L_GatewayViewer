@@ -9,13 +9,14 @@ const char *FilePath = "/home/zeroxcorbin/file_in.pcd";
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr
     cloudIn_(new pcl::PointCloud<pcl::PointXYZ>);
-pcl::PointCloud<pcl::PointXYZI>::Ptr
-    cloudOut_(new pcl::PointCloud<pcl::PointXYZI>);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr
+    cloudOut_(new pcl::PointCloud<pcl::PointXYZRGB>);
 pcl::PointCloud<pcl::Normal>::Ptr
     cloudNormals_(new pcl::PointCloud<pcl::Normal>);
 std::vector<char> cloud_buffers; // (new std::vector<char>);
 pcl::Indices
     *selectedIndices(new pcl::Indices);
+
 std::mutex selectedIndicesMutex_;
 
 std::mutex updateModelMutex_;
@@ -73,9 +74,9 @@ bool ProcessNormals_ = false;
 void ProcessPointCloud()
 {
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (
-        new pcl::PointCloud<pcl::PointXYZ>());
 
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (
+    //     new pcl::PointCloud<pcl::PointXYZ>);
     // pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new
     // pcl::PointCloud<pcl::PointXYZ>());;
 
@@ -92,19 +93,35 @@ void ProcessPointCloud()
     // pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new
     // pcl::PointCloud<pcl::PointXYZ>());;
 
-    PassThroughFilter(cloudIn_, passThroughCloud);
+    //PassThroughFilter(cloudIn_, passThroughCloud);
 
 
-    pcl::copyPointCloud(*passThroughCloud, *cloudOut_);
+    //pcl::copyPointCloud(*passThroughCloud, *cloudOut_);
 
-    //std::unique_lock<std::mutex> updateLock1(selectedIndicesMutex_);
-    for(int i =0; i < cloudOut_->points.size(); i++){
-        cloudOut_->points[i].intensity = 1;
+
+
+
+    cloudOut_->points.clear();
+    for(int i =0; i < cloudIn_->points.size(); i++){
+        pcl::PointXYZRGB p;
+        p.x = cloudIn_->points[i].x;
+        p.y = cloudIn_->points[i].y;
+        p.z = cloudIn_->points[i].z;
+        p.r = 255;
+        p.g = 255;
+        p.b = 255;
+
+        cloudOut_->points.push_back(p);
     }
 
+    std::unique_lock<std::mutex> updateLock(selectedIndicesMutex_);
     for(int i =0; i < selectedIndices->size(); i++){
-        cloudOut_->points[i].intensity = 128;
+        cloudOut_->points[(*selectedIndices)[i]].r = 255;
+        cloudOut_->points[(*selectedIndices)[i]].g = 25;
+        cloudOut_->points[(*selectedIndices)[i]].b = 25;
     }
+    updateLock.unlock();
+
     if (ProcessNormals_)
     {
         NormalEstimationOMP(cloudOut_, cloudNormals_);
@@ -113,7 +130,7 @@ void ProcessPointCloud()
     {
         cloudNormals_->points.clear();
     }
-    //updateLock1.unlock();
+    // updateLock.unlock();
     // VoxelGrid(passThroughCloud, voxelCloud);
 
     // SACSegmentation(passThroughCloud, coefficients, inliers);
@@ -121,7 +138,8 @@ void ProcessPointCloud()
     // *inliersCloud); viewer->removeShape("plane1");
     // viewer->addPlane(*coefficients, "plane1");
 
-    // RandomSampleConsensus(passThroughCloud, ransacCloud);
+    // RandomSampleConsensus(passThroughCloud, ransacCloud)
+
 }
 
 void RecieveData(clsTCPSocket *client)
@@ -222,9 +240,9 @@ void mouseEventOccurred(const pcl::visualization::MouseEvent &event,
         std::cout << "Left mouse button released at position (" << event.getX()
                   << ", " << event.getY() << ")" << std::endl;
 
-        char str[512];
-        sprintf_s(str, "text#%03d", text_id++);
-        viewer->addText("clicked here", event.getX(), event.getY(), str);
+        //char str[512];
+        //sprintf_s(str, "text#%03d", text_id++);
+        //viewer->addText("clicked here", event.getX(), event.getY(), str);
     }
 }
 
@@ -252,7 +270,10 @@ void DisplayCloud()
     std::cout << "Visualizer starting...." << std::endl;
     pcl::visualization::PCLVisualizer::Ptr viewer(
         new pcl::visualization::PCLVisualizer());
-    pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI> handler(cloudOut_,"intensity");
+    // pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI>
+    //     *handler (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PointXYZI>(cloudOut_,"intensity"));
+
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloudOut_);
 
     viewer->initCameraParameters();
     viewer->setShowFPS(false);
@@ -272,9 +293,9 @@ void DisplayCloud()
         {
             std::unique_lock<std::mutex> updateLock(updateModelMutex_);
 
-            if (!viewer->updatePointCloud<pcl::PointXYZI>(cloudOut_, handler, "id"))
+            if (!viewer->updatePointCloud<pcl::PointXYZRGB>(cloudOut_, rgb, "id"))
             {
-                viewer->addPointCloud<pcl::PointXYZI>(cloudOut_, handler, "id");
+                viewer->addPointCloud<pcl::PointXYZRGB>(cloudOut_, rgb, "id");
                 viewer->setPointCloudRenderingProperties(
                     pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "id");
             }
@@ -282,7 +303,7 @@ void DisplayCloud()
             viewer->removePointCloud("normals");
             if (cloudNormals_->points.size() > 0)
             {
-                viewer->addPointCloudNormals<pcl::PointXYZI, pcl::Normal>(
+                viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(
                     cloudOut_, cloudNormals_, 100, (0.1F), "normals");
             }
 
@@ -306,6 +327,9 @@ void DisplayCloud()
 
 int main()
 {
+    cloudOut_->width = 320;
+    cloudOut_->height = 240;
+
     exit_app_ = false;
     update_ = false;
 

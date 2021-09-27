@@ -2,15 +2,15 @@
 
 using Point = pcl::PointXYZ;
 
-void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in,
+void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in,
                          pcl::PointCloud<pcl::Normal>::Ptr normals_cloud)
 {
     Timer t;
     t.start();
-    pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal> *ne (new pcl::NormalEstimationOMP<pcl::PointXYZI, pcl::Normal>);
+    pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> *ne (new pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal>);
     ne->setInputCloud(cloud_in);
-    pcl::search::KdTree<pcl::PointXYZI>::Ptr tree(
-        new pcl::search::KdTree<pcl::PointXYZI>());
+    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(
+        new pcl::search::KdTree<pcl::PointXYZRGB>());
     ne->setSearchMethod(tree);
     ne->setRadiusSearch(0.05);
     ne->compute(*normals_cloud);

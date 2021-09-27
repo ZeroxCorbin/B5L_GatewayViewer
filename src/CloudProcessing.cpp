@@ -15,6 +15,8 @@ void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in,
     ne->setRadiusSearch(0.05);
     ne->compute(*normals_cloud);
     std::cout << "norm: " << t.elapsedMilliseconds() << std::endl;
+
+    delete ne;
 }
 
 void BilateralFilter(pcl::PointCloud<Point>::Ptr cloud_in,
@@ -61,6 +63,8 @@ void PassThroughFilter(pcl::PointCloud<Point>::Ptr cloud_in,
     // pass.setFilterLimitsNegative (true);
     pass->filter(*filtered_cloud);
     std::cout << "pass: " << t.elapsedMilliseconds() << std::endl;
+
+    delete pass;
 }
 
 void SACSegmentation(pcl::PointCloud<Point>::Ptr cloud_in,

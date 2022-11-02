@@ -6,28 +6,50 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	add_compile_options(-Wall -Wextra -Wpedantic)
+# if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+# 	add_compile_options(-Wall -Wextra -Wpedantic)
+# endif()
+
+# if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/build)
+#      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/build )
+# endif()
+
+# if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../build/${PROJECT_NAME}/b5l_gateway_viewer)
+#      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../build/${PROJECT_NAME}/b5l_gateway_viewer )
+# endif()
+
+# if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer)
+#      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer )
+# endif()
+
+# if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer)
+#      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer )
+# endif()
+
+# if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../build/${PROJECT_NAME}/b5l_gateway_viewer)
+#      file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../../build/${PROJECT_NAME}/b5l_gateway_viewer )
+# endif()
+
+set(CPM_DOWNLOAD_VERSION 0.34.0) 
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+
+if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
+    message(STATUS "Downloading CPM.cmake")
+    file(DOWNLOAD https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake ${CPM_DOWNLOAD_LOCATION})
 endif()
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/build)
-     file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/build )
-endif()
+include(${CPM_DOWNLOAD_LOCATION})
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../build/${PROJECT_NAME}/b5l_gateway_viewer)
-     file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../build/${PROJECT_NAME}/b5l_gateway_viewer )
-endif()
+CPMAddPackage(
+    NAME nlohmann_json	 
+    VERSION 3.6.1 	 
+    URL https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip	 
+    URL_HASH SHA256=69cc88207ce91347ea530b227ff0776db82dcb8de6704e1a3d74f4841bc651cf
+    )	 
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer)
-     file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer )
-endif()
-
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer)
-     file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../../install/${PROJECT_NAME}/lib/${PROJECT_NAME}/b5l_gateway_viewer )
-endif()
-
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../build/${PROJECT_NAME}/b5l_gateway_viewer)
-     file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/../../build/${PROJECT_NAME}/b5l_gateway_viewer )
+if(nlohmann_json_ADDED)	 
+    add_library(nlohmann_json INTERFACE)	 
+    target_include_directories(nlohmann_json INTERFACE ${nlohmann_json_SOURCE_DIR})	 
 endif()
 
 # Set the path to the support repo: https://github.com/ZeroxCorbin/CSupportLibrary
@@ -41,6 +63,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/support/)
 include_directories(${PCL_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
 include_directories(${SUPPORT_LIB}/include/)
+
+#add_definitions(-DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 add_definitions(-DPI) #This is a Raspberry PI
 add_definitions(-DSOURCE_DIR_PREFIX="${CMAKE_CURRENT_SOURCE_DIR}")

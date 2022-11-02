@@ -7,19 +7,28 @@ const char *FilePath = "C:\\Users\\jack\\Dropbox\\Projects\\Cpp\\B5L_"
 const char *FilePath = "/home/zeroxcorbin/file_in.pcd";
 #endif
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr
-    cloudIn_(new pcl::PointCloud<pcl::PointXYZ>);
+pcl::PointCloud<pcl::PointXYZI>::Ptr
+    cloudIn_(new pcl::PointCloud<pcl::PointXYZI>);
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     cloudOut_(new pcl::PointCloud<pcl::PointXYZRGB>);
+
 pcl::PointCloud<pcl::Normal>::Ptr
     cloudNormals_(new pcl::PointCloud<pcl::Normal>);
+
 std::vector<char> cloud_buffers; // (new std::vector<char>);
+
 pcl::Indices
     *selectedIndices(new pcl::Indices);
 
-std::mutex selectedIndicesMutex_;
+// int selectStart_x = 0;
+// int selectEnd_x = 0;
+// int selectStart_y = 0;
+// int selectEnd_y = 0;
 
+std::mutex selectedIndicesMutex_;
 std::mutex updateModelMutex_;
+
 bool update_;
 bool exit_app_;
 
@@ -27,15 +36,15 @@ void CopyBuffersToPointCloud()
 {
     /* The result format should be 0x001 or 0x002 (PCD) */
 
-    pcl::PointXYZ currPoint;
+    pcl::PointXYZI currPoint;
 
     cloudIn_->points.clear();
 
-    short *pXYZ; //,*pAmplitude;
+    short *pXYZ,*pAmplitude;
     int i;
 
     pXYZ = (short *)(&cloud_buffers[0]);
-    // pAmplitude = (short *)(&cloud_buffers[0] + (6 * 76800));
+    pAmplitude = (short *)(&cloud_buffers[0] + (6 * 76800));
 
     /* QVGA Loop */
     for (i = 0; i < 76800; i++)
@@ -43,7 +52,7 @@ void CopyBuffersToPointCloud()
         currPoint.x = (float)*pXYZ++ / 1000;
         currPoint.y = (float)*pXYZ++ / 1000;
         currPoint.z = (float)*pXYZ++ / 1000;
-        // currPoint.intensity = *pAmplitude++;
+        currPoint.intensity = *pAmplitude++;
 
         cloudIn_->points.push_back(currPoint);
     }
@@ -71,75 +80,39 @@ bool SaveImageFile(std::vector<unsigned char> fileBytes)
 
 bool ProcessNormals_ = false;
 
+pcl::PointCloud<pcl::PointXYZI>::Ptr cloudIntermediate_ (
+    new pcl::PointCloud<pcl::PointXYZI>);
+
 void ProcessPointCloud()
 {
-
-
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr passThroughCloud (
-    //     new pcl::PointCloud<pcl::PointXYZ>);
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr voxelCloud (new
-    // pcl::PointCloud<pcl::PointXYZ>());;
-
-    // pcl::PointCloud<pcl::Normal>::Ptr normalsCloud (new
-    // pcl::PointCloud<pcl::Normal>);
-
-    // pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-
-    // pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr inliersCloud (new
-    // pcl::PointCloud<pcl::PointXYZ>());
-
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr ransacCloud (new
-    // pcl::PointCloud<pcl::PointXYZ>());;
-
-    //PassThroughFilter(cloudIn_, passThroughCloud);
-
-
-    //pcl::copyPointCloud(*passThroughCloud, *cloudOut_);
-
-
-
-
-    cloudOut_->points.clear();
-    for(int i =0; i < cloudIn_->points.size(); i++){
-        pcl::PointXYZRGB p;
-        p.x = cloudIn_->points[i].x;
-        p.y = cloudIn_->points[i].y;
-        p.z = cloudIn_->points[i].z;
-        p.r = 255;
-        p.g = 255;
-        p.b = 255;
-
-        cloudOut_->points.push_back(p);
-    }
-
-    std::unique_lock<std::mutex> updateLock(selectedIndicesMutex_);
-    for(int i =0; i < selectedIndices->size(); i++){
-        cloudOut_->points[(*selectedIndices)[i]].r = 255;
-        cloudOut_->points[(*selectedIndices)[i]].g = 25;
-        cloudOut_->points[(*selectedIndices)[i]].b = 25;
-    }
-    updateLock.unlock();
+    //PassThroughFilter(cloudIn_, cloudIntermediate_);
 
     if (ProcessNormals_)
     {
-        NormalEstimationOMP(cloudOut_, cloudNormals_);
+        NormalEstimationOMP(cloudIn_, cloudNormals_);
     }
     else
     {
         cloudNormals_->points.clear();
     }
-    // updateLock.unlock();
-    // VoxelGrid(passThroughCloud, voxelCloud);
 
-    // SACSegmentation(passThroughCloud, coefficients, inliers);
-    // pcl::copyPointCloud<pcl::PointXYZ>(*passThroughCloud, *inliers,
-    // *inliersCloud); viewer->removeShape("plane1");
-    // viewer->addPlane(*coefficients, "plane1");
+    pcl::copyPointCloud(*cloudIn_, *cloudOut_);
 
-    // RandomSampleConsensus(passThroughCloud, ransacCloud)
+    for(int i =0; i < cloudOut_->points.size(); i++){
+        cloudOut_->points[i].r = cloudIn_->points[i].intensity;
+        cloudOut_->points[i].g = cloudIn_->points[i].intensity;
+        cloudOut_->points[i].b = cloudIn_->points[i].intensity;
+    }
 
+    std::unique_lock<std::mutex> updateLock(selectedIndicesMutex_);
+    
+    for(int i =0; i < selectedIndices->size(); i++){
+        cloudOut_->points[(*selectedIndices)[i]].r = 255;
+        cloudOut_->points[(*selectedIndices)[i]].g = 25;
+        cloudOut_->points[(*selectedIndices)[i]].b = 25;
+    }
+
+    updateLock.unlock();
 }
 
 void RecieveData(clsTCPSocket *client)
@@ -229,21 +202,42 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
     }
 }
 
+
 void mouseEventOccurred(const pcl::visualization::MouseEvent &event,
                         void *viewer_void)
 {
-    pcl::visualization::PCLVisualizer *viewer =
-        static_cast<pcl::visualization::PCLVisualizer *>(viewer_void);
+    // pcl::visualization::PCLVisualizer *viewer =
+    //     static_cast<pcl::visualization::PCLVisualizer *>(viewer_void);
+
+    if (event.getButton() == pcl::visualization::MouseEvent::LeftButton &&
+        event.getType() == pcl::visualization::MouseEvent::MouseButtonPress)
+    {
+        // std::unique_lock<std::mutex> updateLock(selectedIndicesMutex_);
+
+        // selectStart_x = event.getX();
+        // selectStart_y = event.getY();
+        
+        // char str[512];
+        // sprintf_s(str, "text#%03d", text_id++);
+        // viewer->addText("start", event.getX(), event.getY(), str);
+    }
+
     if (event.getButton() == pcl::visualization::MouseEvent::LeftButton &&
         event.getType() == pcl::visualization::MouseEvent::MouseButtonRelease)
     {
-        std::cout << "Left mouse button released at position (" << event.getX()
-                  << ", " << event.getY() << ")" << std::endl;
+        // std::unique_lock<std::mutex> updateLock(selectedIndicesMutex_);
 
-        //char str[512];
-        //sprintf_s(str, "text#%03d", text_id++);
-        //viewer->addText("clicked here", event.getX(), event.getY(), str);
+        // selectEnd_x = event.getX();
+        // selectEnd_y = event.getY();
+
+        // char str[512];
+        // sprintf_s(str, "text#%03d", text_id++);
+
+        //         char str1[512];
+        // sprintf_s(str1, "end %d", event.getX() * event.getY());
+        // viewer->addText(str1, event.getX(), event.getY(), str);
     }
+
 }
 
 void pointPickingEventOccurred (const pcl::visualization::PointPickingEvent& event, void* viewer_void)
@@ -327,6 +321,8 @@ void DisplayCloud()
 
 int main()
 {
+    cloudIn_->width = 320;
+    cloudIn_->height = 240;
     cloudOut_->width = 320;
     cloudOut_->height = 240;
 

@@ -15,10 +15,11 @@
 #include <pcl/sample_consensus/sac_model_plane.h>
 
 #include "clsTimer.hpp"
+using Point = pcl::PointXYZI;
 
-void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in, pcl::PointCloud<pcl::Normal>::Ptr normals_cloud);
-void BilateralFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr bilateral_cloud);
-void VoxelGrid(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud);
-void PassThroughFilter(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud);
-void SACSegmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients, pcl::PointIndices::Ptr inliers);
-void RandomSampleConsensus(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud);
+void NormalEstimationOMP(pcl::PointCloud<Point>::Ptr cloud_in, pcl::PointCloud<pcl::Normal>::Ptr normals_cloud);
+void BilateralFilter(pcl::PointCloud<Point>::Ptr cloud_in, pcl::PointCloud<Point>::Ptr bilateral_cloud);
+void VoxelGrid(pcl::PointCloud<Point>::Ptr cloud_in, pcl::PointCloud<Point>::Ptr filtered_cloud);
+void PassThroughFilter(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in, pcl::PointCloud<Point>::Ptr filtered_cloud);
+void SACSegmentation(pcl::PointCloud<Point>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients, pcl::PointIndices::Ptr inliers);
+void RandomSampleConsensus(pcl::PointCloud<Point>::Ptr cloud_in, pcl::PointCloud<Point>::Ptr filtered_cloud);

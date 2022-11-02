@@ -1,16 +1,15 @@
 #include "CloudProcessing.hpp"
 
-using Point = pcl::PointXYZ;
 
-void NormalEstimationOMP(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in,
+void NormalEstimationOMP(pcl::PointCloud<Point>::Ptr cloud_in,
                          pcl::PointCloud<pcl::Normal>::Ptr normals_cloud)
 {
     Timer t;
     t.start();
-    pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> *ne (new pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal>);
+    pcl::NormalEstimationOMP<Point, pcl::Normal> *ne (new pcl::NormalEstimationOMP<Point, pcl::Normal>);
     ne->setInputCloud(cloud_in);
-    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(
-        new pcl::search::KdTree<pcl::PointXYZRGB>());
+    pcl::search::KdTree<Point>::Ptr tree(
+        new pcl::search::KdTree<Point>());
     ne->setSearchMethod(tree);
     ne->setRadiusSearch(0.05);
     ne->compute(*normals_cloud);
@@ -57,10 +56,11 @@ void PassThroughFilter(pcl::PointCloud<Point>::Ptr cloud_in,
     Timer t;
     t.start();
     pcl::PassThrough<Point> *pass (new pcl::PassThrough<Point>);
+    pass->setKeepOrganized(true);
     pass->setInputCloud(cloud_in);
     pass->setFilterFieldName("z");
     pass->setFilterLimits(1.0, 6.0);
-    // pass.setFilterLimitsNegative (true);
+    //pass.setFilterLimitsNegative (true);
     pass->filter(*filtered_cloud);
     std::cout << "pass: " << t.elapsedMilliseconds() << std::endl;
 
